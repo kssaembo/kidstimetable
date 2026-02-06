@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import ScheduleGrid from '../components/ScheduleGrid';
 import { ScheduleEvent, Child, DayOfWeek, EventTemplate, SchoolTime } from '../types';
 import { CATEGORY_COLORS } from '../constants';
-import { Search, GripVertical, Trash2, Clock, Info, ChevronRight, LayoutGrid } from 'lucide-react';
+import { Search, GripVertical, Clock, Info, ChevronRight, LayoutGrid } from 'lucide-react';
 
 interface AssignmentProps {
   schedules: ScheduleEvent[];
@@ -30,6 +30,10 @@ const Assignment: React.FC<AssignmentProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   
+  // 마우스 따라다니는 팝업을 위한 상태
+  const [hoveredItem, setHoveredItem] = useState<{ title: string, description: string } | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  
   const filteredTemplatesByChild = templates.filter(t => t.childId === activeChildId);
 
   const groupedTemplates = filteredTemplatesByChild.reduce((acc, t) => {
@@ -43,9 +47,9 @@ const Assignment: React.FC<AssignmentProps> = ({
     if (!school) return false;
 
     const [sh, sm] = school.startTime.split(':').map(Number);
-    const [eh, em] = school.endTime.split(':').map(Number);
+    const [eh, eh_m] = school.endTime.split(':').map(Number);
     const schoolStart = sh * 60 + sm;
-    const schoolEnd = eh * 60 + em;
+    const schoolEnd = eh * 60 + eh_m;
 
     const [nh, nm] = startTimeStr.split(':').map(Number);
     const newStart = nh * 60 + nm;
@@ -79,6 +83,8 @@ const Assignment: React.FC<AssignmentProps> = ({
     e.dataTransfer.setData('dragId', id);
     e.dataTransfer.setData('dragType', type);
     (window as any).currentDrag = { id, type, duration, offsetY };
+    // 드래그 시작 시 호버 상태 해제
+    setHoveredItem(null);
   };
 
   const handleDrop = (day: DayOfWeek, time: string) => {
@@ -132,8 +138,12 @@ const Assignment: React.FC<AssignmentProps> = ({
     (window as any).currentDrag = null;
   };
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+  };
+
   return (
-    <div className="p-8 h-screen flex flex-col overflow-hidden">
+    <div className="p-8 h-screen flex flex-col overflow-hidden" onMouseMove={handleMouseMove}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 flex-shrink-0">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">시간 배정</h2>
@@ -158,7 +168,6 @@ const Assignment: React.FC<AssignmentProps> = ({
       </div>
 
       <div className="flex-1 flex gap-6 min-h-0 pb-4">
-        {/* 시간표 영역 (가장 큰 박스 테두리는 삭제) */}
         <div className="flex-1 bg-white rounded-2xl shadow-sm flex flex-col min-w-0 overflow-hidden relative">
           <div className="p-3 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2 text-indigo-800 text-[11px] font-bold flex-shrink-0">
             <Info size={14} />
@@ -188,7 +197,6 @@ const Assignment: React.FC<AssignmentProps> = ({
           </div>
         </div>
 
-        {/* 사이드바 영역 */}
         <div className="w-80 flex flex-col gap-4 flex-shrink-0">
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex-1 flex flex-col min-h-0">
             <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
@@ -224,6 +232,12 @@ const Assignment: React.FC<AssignmentProps> = ({
                           key={template.id}
                           draggable
                           onDragStart={(e) => handleDragStart(e, template.id, 'NEW')}
+                          onMouseEnter={() => {
+                            if (template.description) {
+                              setHoveredItem({ title: template.title, description: template.description });
+                            }
+                          }}
+                          onMouseLeave={() => setHoveredItem(null)}
                           className="group bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-400 cursor-grab active:cursor-grabbing transition-all relative border-l-4"
                           style={{ borderLeftColor: CATEGORY_COLORS[template.category] || '#cbd5e1' }}
                         >
@@ -244,6 +258,26 @@ const Assignment: React.FC<AssignmentProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 마우스 커서를 따라다니는 세부 설명 팝업 (Custom Tooltip) */}
+      {hoveredItem && (
+        <div 
+          className="fixed pointer-events-none z-[9999] bg-slate-800 text-white p-3 rounded-xl shadow-2xl border border-slate-700 backdrop-blur-md w-56 transition-opacity duration-150"
+          style={{ 
+            left: mousePos.x + 20, 
+            top: mousePos.y + 10,
+            opacity: hoveredItem ? 1 : 0
+          }}
+        >
+          <div className="font-extrabold mb-1.5 pb-1 border-b border-slate-600 flex items-center gap-1.5 text-indigo-300 text-xs">
+            <Info size={14} />
+            {hoveredItem.title} 세부 설명
+          </div>
+          <div className="text-[11px] leading-relaxed opacity-90 whitespace-pre-wrap font-medium">
+            {hoveredItem.description}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

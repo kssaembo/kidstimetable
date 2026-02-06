@@ -92,22 +92,27 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
       id="schedule-capture-area"
       className={`relative flex bg-white rounded-xl shadow-sm overflow-auto custom-scrollbar h-full ${isPrinting ? 'print-area h-auto overflow-visible' : ''}`}
     >
-      {/* 시간 열 (왼쪽 고정) - 높이를 명시적으로 설정하여 sticky 유지 */}
+      {/* 시간 열 (왼쪽 고정) */}
       <div 
         className="w-16 border-r border-slate-200 bg-slate-50 flex-shrink-0 sticky left-0 z-30"
         style={{ height: totalGridHeight }}
       >
         <div className="h-12 border-b border-slate-200 bg-slate-50"></div>
         {hours.map((hour) => (
-          <div key={hour} className="h-[120px] text-center text-[10px] text-slate-500 border-b border-slate-100 flex flex-col justify-start pt-1">
-            <span className="font-bold text-slate-600 text-xs">{hour}:00</span>
-            <div className="h-1/2 border-b border-slate-100 w-2 mx-auto mt-4"></div>
-            <span className="opacity-70">{hour}:30</span>
+          <div key={hour} className="h-[120px] text-center bg-slate-50 relative border-b border-slate-200 last:border-b-0">
+            {/* 시(00분) 레이블: 상단 고정 */}
+            <div className="absolute top-1 left-0 right-0 flex justify-center">
+              <span className="font-bold text-slate-700 text-[11px] bg-slate-50 px-1">{hour}:00</span>
+            </div>
+            {/* 30분 레이블: 정확히 60px(1/2) 지점에 텍스트 중앙이 오도록 배치 */}
+            <div className="absolute top-[60px] left-0 right-0 flex justify-center transform -translate-y-1/2">
+              <span className="font-medium text-slate-400 text-[10px] bg-slate-50 px-1">{hour}:30</span>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* 요일 및 그리드 영역 - 전체 컨텐츠 높이 확보 */}
+      {/* 요일 및 그리드 영역 */}
       <div className="flex-1 flex min-w-[1000px]" style={{ height: totalGridHeight }}>
         {DAYS.map((day) => (
           <div 
@@ -126,16 +131,21 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
             {/* 그리드 배경 레이어 */}
             <div className="relative" style={{ height: totalContentHeight }}>
               {hours.map((hour) => (
-                <div key={hour} className="h-[120px] border-b border-slate-100 pointer-events-none relative">
-                  <div className="absolute top-[20px] w-full border-b border-slate-50 border-dashed"></div>
-                  <div className="absolute top-[40px] w-full border-b border-slate-50 border-dashed"></div>
-                  <div className="absolute top-[60px] w-full border-b border-slate-100"></div>
-                  <div className="absolute top-[80px] w-full border-b border-slate-50 border-dashed"></div>
-                  <div className="absolute top-[100px] w-full border-b border-slate-50 border-dashed"></div>
+                <div key={hour} className="h-[120px] border-b border-slate-200 pointer-events-none relative last:border-b-0">
+                  {/* 10분, 20분 보조선 */}
+                  <div className="absolute top-[20px] w-full border-b border-slate-100 border-dashed"></div>
+                  <div className="absolute top-[40px] w-full border-b border-slate-100 border-dashed"></div>
+                  
+                  {/* 30분 가로선 (요청: 진하게) */}
+                  <div className="absolute top-[60px] w-full border-b border-slate-200"></div>
+                  
+                  {/* 40분, 50분 보조선 */}
+                  <div className="absolute top-[80px] w-full border-b border-slate-100 border-dashed"></div>
+                  <div className="absolute top-[100px] w-full border-b border-slate-100 border-dashed"></div>
                 </div>
               ))}
 
-              {/* 학교 수업 시간 표시 (빗금 영역) - 테두리 제거 */}
+              {/* 학교 수업 시간 표시 (빗금 영역) */}
               {schoolTimes
                 .filter(st => st.day === day && st.isEnabled)
                 .map((st, idx) => {
