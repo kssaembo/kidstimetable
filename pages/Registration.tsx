@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { EventTemplate, Child } from '../types';
 import { CATEGORY_COLORS } from '../constants';
-import { Save, CalendarPlus, AlignLeft, Clock, Plus, Trash2, Tag, List, Loader2, Baby } from 'lucide-react';
+import { Save, CalendarPlus, AlignLeft, Clock, Plus, Trash2, Tag, List, Loader2, Baby, Pencil, RefreshCw } from 'lucide-react';
 
 interface RegistrationProps {
   userId: string;
@@ -10,27 +10,26 @@ interface RegistrationProps {
   onAddCategory: (cat: string) => void;
   onRemoveCategory: (cat: string) => void;
   onSubmit: (t: Omit<EventTemplate, 'id'>) => void;
+  onUpdateTemplate: (id: string, updates: Partial<EventTemplate>) => void;
   onDeleteTemplate: (id: string) => void;
   templates: EventTemplate[];
-  children: Child[]; // App.tsx에서 전달받아야 함
+  children: Child[];
 }
 
-// 부모 컴포넌트(App.tsx)에서 children을 전달하도록 인터페이스 수정 필요
-// 현재 App.tsx 확인 결과 props에 children이 누락되어 있음.
-// App.tsx에서도 해당 컴포넌트 호출 시 props 추가 필요.
-
-const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({ 
+const Registration: React.FC<RegistrationProps> = ({ 
   userId, 
   categories, 
   onAddCategory, 
   onRemoveCategory, 
   onSubmit,
+  onUpdateTemplate,
   onDeleteTemplate,
   templates,
   children
 }) => {
   const [submitting, setSubmitting] = useState(false);
   const [activeChildId, setActiveChildId] = useState<string>(children[0]?.id || '');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     duration: 60,
@@ -39,14 +38,12 @@ const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({
   });
   const [newCatName, setNewCatName] = useState('');
 
-  // Update default category when categories list loads
   React.useEffect(() => {
     if (categories.length > 0 && !formData.category) {
       setFormData(prev => ({ ...prev, category: categories[0] }));
     }
   }, [categories]);
 
-  // 자녀가 바뀌면 첫 번째 자녀를 기본 선택
   React.useEffect(() => {
     if (children.length > 0 && !activeChildId) {
       setActiveChildId(children[0].id);
@@ -60,6 +57,28 @@ const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({
     }
   };
 
+  const handleEditClick = (t: EventTemplate) => {
+    setEditingId(t.id);
+    setFormData({
+      title: t.title,
+      duration: t.duration,
+      category: t.category,
+      description: t.description || ''
+    });
+    // 스크롤 이동 등 사용자 편의성 제공 가능
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setFormData({
+      title: '',
+      duration: 60,
+      category: categories[0] || '학원',
+      description: ''
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeChildId) return alert('자녀를 먼저 선택해주세요.');
@@ -68,18 +87,26 @@ const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({
 
     setSubmitting(true);
     try {
-      await onSubmit({
-        userId,
-        childId: activeChildId,
-        ...formData
-      });
+      if (editingId) {
+        await onUpdateTemplate(editingId, {
+          ...formData
+        });
+        alert('일정이 수정되었습니다!');
+        setEditingId(null);
+      } else {
+        await onSubmit({
+          userId,
+          childId: activeChildId,
+          ...formData
+        });
+        alert('일정이 등록되었습니다!');
+      }
       setFormData({ 
         title: '', 
         duration: 60, 
         category: formData.category, 
         description: '' 
       });
-      alert('일정이 등록되었습니다!');
     } catch (err) {
       console.error(err);
     } finally {
@@ -96,12 +123,14 @@ const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({
         <p className="text-slate-500">자녀를 선택하고, 반복될 수업이나 활동의 이름과 소요시간을 설정하세요.</p>
       </header>
 
-      {/* Child Selection Tabs */}
       <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
         {children.map(child => (
           <button
             key={child.id}
-            onClick={() => setActiveChildId(child.id)}
+            onClick={() => {
+              setActiveChildId(child.id);
+              if (editingId) cancelEdit();
+            }}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
               activeChildId === child.id 
                 ? 'bg-white text-indigo-600 shadow-md ring-1 ring-slate-200' 
@@ -116,7 +145,13 @@ const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({
 
       <div className="flex flex-col md:flex-row gap-8">
         <div className="flex-1">
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <form onSubmit={handleSubmit} className={`bg-white rounded-2xl border ${editingId ? 'border-amber-400 ring-2 ring-amber-100' : 'border-slate-200'} shadow-sm overflow-hidden transition-all`}>
+            {editingId && (
+              <div className="bg-amber-50 px-6 py-2 text-amber-700 text-xs font-bold flex justify-between items-center border-b border-amber-200">
+                <span>일정 수정 중입니다...</span>
+                <button type="button" onClick={cancelEdit} className="underline">취소하기</button>
+              </div>
+            )}
             <div className="p-6 space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -163,7 +198,6 @@ const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({
                     {categories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
-                    {categories.length === 0 && <option value="기타">기타</option>}
                   </select>
                 </div>
               </div>
@@ -184,13 +218,22 @@ const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({
             </div>
 
             <div className="bg-slate-50 p-6 flex justify-end gap-3 border-t border-slate-100">
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-200 rounded-xl transition-all"
+                >
+                  취소
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-8 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-md flex items-center gap-2 font-bold disabled:bg-slate-400"
+                className={`px-8 py-3 ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'} text-white rounded-xl transition-all shadow-md flex items-center gap-2 font-bold disabled:bg-slate-400`}
               >
-                {submitting ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                {children.find(c => c.id === activeChildId)?.name} 일정 추가
+                {submitting ? <Loader2 className="animate-spin" size={20} /> : (editingId ? <RefreshCw size={20} /> : <Save size={20} />)}
+                {children.find(c => c.id === activeChildId)?.name} 일정 {editingId ? '수정' : '추가'}
               </button>
             </div>
           </form>
@@ -238,13 +281,21 @@ const Registration: React.FC<RegistrationProps & { children: Child[] }> = ({
               <p className="text-slate-400 italic text-sm py-10 text-center">이 자녀의 등록된 일정이 없습니다.</p>
             ) : (
               filteredTemplates.map(t => (
-                <div key={t.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative group">
-                  <button 
-                    onClick={() => onDeleteTemplate(t.id)}
-                    className="absolute top-4 right-4 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                <div key={t.id} className={`bg-white p-4 rounded-2xl border ${editingId === t.id ? 'border-amber-400 shadow-md ring-2 ring-amber-50' : 'border-slate-200'} shadow-sm relative group transition-all`}>
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    <button 
+                      onClick={() => handleEditClick(t)}
+                      className="text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button 
+                      onClick={() => onDeleteTemplate(t.id)}
+                      className="text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                   <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold mb-2" style={{ backgroundColor: CATEGORY_COLORS[t.category] || '#E0F2FE' }}>
                     {t.category}
                   </div>

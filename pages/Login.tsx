@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Mail, Lock, ArrowRight, UserPlus } from 'lucide-react';
+import { Sparkles, Mail, Lock, ArrowRight, UserPlus, AlertCircle } from 'lucide-react';
 import { auth } from '../firebase';
 import { 
   signInWithEmailAndPassword, 
@@ -13,9 +13,13 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const getErrorMessage = (error: any) => {
-    switch (error.code) {
+    const errorCode = error.code || '';
+    console.debug("Login Error Code:", errorCode);
+
+    switch (errorCode) {
       case 'auth/invalid-api-key':
         return 'Firebase API 키가 유효하지 않습니다. firebase.ts 설정을 확인해주세요.';
       case 'auth/network-request-failed':
@@ -27,20 +31,22 @@ const Login: React.FC = () => {
       case 'auth/user-not-found':
       case 'auth/wrong-password':
       case 'auth/invalid-credential':
-        return '이메일 또는 비밀번호가 일치하지 않습니다.';
+        return '비밀번호나 이메일 주소를 다시 확인해 주세요.';
       case 'auth/invalid-email':
         return '유효하지 않은 이메일 형식입니다.';
+      case 'auth/too-many-requests':
+        return '너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.';
       default:
-        return `오류가 발생했습니다: ${error.message}`;
+        return `오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`;
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     
-    // API 키 설정 확인 (클라이언트 측 가드)
     if (auth.config.apiKey === "YOUR_API_KEY") {
-      alert('백엔드 설정(Firebase API Key)이 완료되지 않았습니다. 개발자에게 문의하거나 firebase.ts 파일을 수정해주세요.');
+      setErrorMsg('백엔드 설정(Firebase API Key)이 완료되지 않았습니다.');
       return;
     }
 
@@ -53,8 +59,10 @@ const Login: React.FC = () => {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (error: any) {
-      console.error("Firebase Auth Error:", error);
-      alert(getErrorMessage(error));
+      console.error("Firebase Auth Error Detail:", error);
+      const msg = getErrorMessage(error);
+      setErrorMsg(msg);
+      // 알림창이 브라우저에서 차단될 수 있으므로 화면에 직접 띄우는 것과 병행합니다.
     } finally {
       setLoading(false);
     }
@@ -62,11 +70,12 @@ const Login: React.FC = () => {
 
   const handleResetPassword = async () => {
     if (!email) return alert('이메일을 입력해주세요.');
+    setErrorMsg(null);
     try {
       await sendPasswordResetEmail(auth, email);
       alert('비밀번호 재설정 이메일이 발송되었습니다.');
     } catch (error: any) {
-      alert(getErrorMessage(error));
+      setErrorMsg(getErrorMessage(error));
     }
   };
 
@@ -92,7 +101,7 @@ const Login: React.FC = () => {
                 type="email"
                 required
                 placeholder="name@example.com"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-medium"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -108,7 +117,7 @@ const Login: React.FC = () => {
                   <button 
                     type="button" 
                     onClick={handleResetPassword}
-                    className="text-xs text-indigo-600 hover:underline"
+                    className="text-xs text-indigo-600 hover:underline font-bold"
                   >
                     비밀번호 찾기
                   </button>
@@ -118,16 +127,23 @@ const Login: React.FC = () => {
                 type="password"
                 required
                 placeholder="••••••••"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-medium"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
 
+            {errorMsg && (
+              <div className="p-3 bg-rose-50 border-2 border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-sm font-bold animate-pulse">
+                <AlertCircle size={18} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:bg-slate-400 transition-all shadow-lg shadow-indigo-100 font-bold flex items-center justify-center gap-2 group"
+              className="w-full py-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:bg-slate-400 transition-all shadow-lg shadow-indigo-100 font-extrabold flex items-center justify-center gap-2 group"
             >
               {loading ? '처리 중...' : isRegister ? '회원가입하기' : '로그인하기'}
               {!loading && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
@@ -139,7 +155,7 @@ const Login: React.FC = () => {
               {isRegister ? '이미 계정이 있으신가요?' : '계정이 없으신가요?'} 
               <button 
                 onClick={() => setIsRegister(!isRegister)}
-                className="ml-2 text-indigo-600 font-semibold hover:underline"
+                className="ml-2 text-indigo-600 font-extrabold hover:underline"
               >
                 {isRegister ? '로그인' : '회원가입'}
               </button>

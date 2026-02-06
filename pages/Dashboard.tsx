@@ -1,15 +1,16 @@
 
 import React from 'react';
 import ScheduleGrid from '../components/ScheduleGrid';
-import { ScheduleEvent } from '../types';
+import { ScheduleEvent, SchoolTime } from '../types';
 import { Download, Share2, FileSpreadsheet, Loader2, Sparkles } from 'lucide-react';
 
 interface DashboardProps {
   schedules: ScheduleEvent[];
   childName: string;
+  schoolTimes: SchoolTime[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ schedules, childName }) => {
+const Dashboard: React.FC<DashboardProps> = ({ schedules, childName, schoolTimes }) => {
   const [exporting, setExporting] = React.useState(false);
 
   const handleExportPDF = async () => {
@@ -103,15 +104,15 @@ const Dashboard: React.FC<DashboardProps> = ({ schedules, childName }) => {
         </div>
       </header>
 
-      <div className="flex-1 min-h-0 bg-slate-100 p-2 rounded-2xl shadow-inner border border-slate-200 overflow-hidden relative">
-        <ScheduleGrid schedules={schedules} />
+      {/* 가장 큰 영역의 박스 테두리는 삭제 */}
+      <div className="flex-1 min-h-0 bg-slate-100 p-2 rounded-2xl shadow-inner overflow-hidden relative">
+        <ScheduleGrid schedules={schedules} schoolTimes={schoolTimes} />
       </div>
 
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 no-print flex-shrink-0">
         <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
            <p className="text-xs text-indigo-600 leading-relaxed font-medium">
-             💡 팁: 시간표가 길어 아래가 보이지 않는다면 그리드 영역 내부를 아래로 스크롤하세요. 
-             PDF 저장 시에는 전체 시간표가 캡처됩니다.
+             💡 팁: 학교 수업 시간은 설정 탭에서 관리 가능하며, 해당 시간에는 다른 일정을 배정할 수 없습니다.
            </p>
         </div>
       </div>

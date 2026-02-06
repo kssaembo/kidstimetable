@@ -8,7 +8,7 @@ import Registration from './pages/Registration';
 import SettingsPage from './pages/SettingsPage';
 import Login from './pages/Login';
 import PublicView from './pages/PublicView';
-import { UserProfile, Child, ScheduleEvent, EventTemplate } from './types';
+import { UserProfile, Child, ScheduleEvent, EventTemplate, SchoolTime } from './types';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { 
@@ -41,11 +41,19 @@ const App: React.FC = () => {
           const userSnap = await getDoc(userDocRef);
           
           if (!userSnap.exists()) {
+            const initialSchoolTimes: SchoolTime[] = ['월', '화', '수', '목', '금'].map(day => ({
+              day: day as any,
+              startTime: '09:00',
+              endTime: '13:00',
+              isEnabled: true
+            }));
+
             await setDoc(userDocRef, {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               children: [{ id: 'child1', name: '김우리', color: '#818cf8' }],
-              customCategories: ['학원', '공부', '놀이', '운동', '기타']
+              customCategories: ['학원', '공부', '놀이', '운동', '기타'],
+              schoolTimes: initialSchoolTimes
             });
           }
 
@@ -96,7 +104,6 @@ const App: React.FC = () => {
 
   const logout = () => signOut(auth);
 
-  // Firestore actions with error handling
   const wrapAction = async (action: () => Promise<any>, successMsg?: string) => {
     try {
       await action();
@@ -115,11 +122,14 @@ const App: React.FC = () => {
   const removeCategory = (cat: string) => user && wrapAction(() => updateDoc(doc(db, 'users', user.uid), { customCategories: arrayRemove(cat) }));
   
   const addTemplate = (t: Omit<EventTemplate, 'id'>) => wrapAction(() => addDoc(collection(db, 'eventTemplates'), t));
+  const updateTemplate = (id: string, updates: Partial<EventTemplate>) => wrapAction(() => updateDoc(doc(db, 'eventTemplates', id), updates));
   const deleteTemplate = (id: string) => wrapAction(() => deleteDoc(doc(db, 'eventTemplates', id)));
 
   const addSchedule = (s: Omit<ScheduleEvent, 'id'>) => wrapAction(() => addDoc(collection(db, 'schedules'), s));
   const deleteSchedule = (id: string) => wrapAction(() => deleteDoc(doc(db, 'schedules', id)));
   const updateSchedule = (id: string, updates: Partial<ScheduleEvent>) => wrapAction(() => updateDoc(doc(db, 'schedules', id), updates));
+
+  const updateSchoolTimes = (times: SchoolTime[]) => user && wrapAction(() => updateDoc(doc(db, 'users', user.uid), { schoolTimes: times }));
 
   if (loading) return <div className="h-screen flex items-center justify-center text-indigo-500 font-bold">로딩 중...</div>;
 
@@ -147,6 +157,7 @@ const App: React.FC = () => {
               <Dashboard 
                 schedules={schedules.filter(s => s.childId === selectedChildId)} 
                 childName={selectedChild?.name || ''}
+                schoolTimes={user.schoolTimes || []}
               />
             } />
             <Route path="/assignment" element={
@@ -159,6 +170,7 @@ const App: React.FC = () => {
                 addSchedule={addSchedule}
                 updateSchedule={updateSchedule}
                 deleteSchedule={deleteSchedule}
+                schoolTimes={user.schoolTimes || []}
               />
             } />
             <Route path="/registration" element={
@@ -168,9 +180,10 @@ const App: React.FC = () => {
                 onAddCategory={addCategory}
                 onRemoveCategory={removeCategory}
                 onSubmit={addTemplate}
+                onUpdateTemplate={updateTemplate}
                 onDeleteTemplate={deleteTemplate}
                 templates={templates}
-                children={user.children} // props 추가됨
+                children={user.children}
               />
             } />
             <Route path="/settings" element={
@@ -180,6 +193,7 @@ const App: React.FC = () => {
                 onRemoveChild={(id) => wrapAction(() => updateDoc(doc(db, 'users', user.uid), { children: user.children.filter(c => c.id !== id) }))}
                 selectedChildId={selectedChildId}
                 onSelectChild={setSelectedChildId}
+                onUpdateSchoolTimes={updateSchoolTimes}
               />
             } />
             <Route path="/shared/:shareId" element={<PublicView />} />

@@ -1,11 +1,12 @@
 
 import React, { useState } from 'react';
-import { DayOfWeek, ScheduleEvent } from '../types';
+import { DayOfWeek, ScheduleEvent, SchoolTime } from '../types';
 import { DAYS, START_HOUR, END_HOUR, PIXELS_PER_HOUR, CATEGORY_COLORS } from '../constants';
-import { X, Clock } from 'lucide-react';
+import { X, Clock, GraduationCap } from 'lucide-react';
 
 interface ScheduleGridProps {
   schedules: ScheduleEvent[];
+  schoolTimes?: SchoolTime[];
   onDrop?: (day: DayOfWeek, time: string) => void;
   onEventClick?: (event: ScheduleEvent) => void;
   onEventDelete?: (id: string) => void;
@@ -15,6 +16,7 @@ interface ScheduleGridProps {
 
 const ScheduleGrid: React.FC<ScheduleGridProps> = ({ 
   schedules, 
+  schoolTimes = [],
   onDrop, 
   onEventClick, 
   onEventDelete,
@@ -23,6 +25,10 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
 }) => {
   const [dragOverInfo, setDragOverInfo] = useState<{ day: DayOfWeek, time: string, y: number } | null>(null);
   const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+  
+  const HEADER_HEIGHT = 48;
+  const totalContentHeight = (END_HOUR - START_HOUR + 1) * PIXELS_PER_HOUR;
+  const totalGridHeight = totalContentHeight + HEADER_HEIGHT;
 
   const calculatePosition = (time: string) => {
     const [h, m] = time.split(':').map(Number);
@@ -41,22 +47,17 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const currentDrag = (window as any).currentDrag;
     
-    // 헤더 높이(h-12 = 48px)를 좌표 계산에서 제외해야 그리드 영역과 일치합니다.
-    const HEADER_HEIGHT = 48;
     const dragOffset = currentDrag?.offsetY || 0;
     
-    // 마우스 Y에서 컨테이너 상단을 빼고, 잡은 위치(offsetY)만큼 보정하고, 헤더(48px)를 뺍니다.
+    // Y position relative to the grid content (after header)
     const y = e.clientY - rect.top - dragOffset - HEADER_HEIGHT;
     
-    // 1시간당 PIXELS_PER_HOUR(120px) 기준, 10분은 20px
     const totalMinutes = (y / PIXELS_PER_HOUR) * 60;
-    // Math.round를 사용하여 가장 가까운 10분 단위로 스냅합니다 (더 직관적)
     const snappedMinutes = Math.round(totalMinutes / 10) * 10;
     
     const h = Math.floor(snappedMinutes / 60) + START_HOUR;
     const m = snappedMinutes % 60;
     
-    // 시간대 범위를 넘어서지 않도록 보정 (13시 ~ 22시)
     const safeH = Math.min(Math.max(h, START_HOUR), END_HOUR);
     const timeString = `${safeH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
     const snappedY = ((safeH - START_HOUR) * 60 + m) / 60 * PIXELS_PER_HOUR;
@@ -89,42 +90,80 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
   return (
     <div 
       id="schedule-capture-area"
-      className={`relative flex bg-white rounded-xl shadow-sm border border-slate-200 overflow-auto custom-scrollbar h-full ${isPrinting ? 'print-area h-auto overflow-visible' : ''}`}
+      className={`relative flex bg-white rounded-xl shadow-sm overflow-auto custom-scrollbar h-full ${isPrinting ? 'print-area h-auto overflow-visible' : ''}`}
     >
-      <div className="w-16 border-r border-slate-100 bg-slate-50 flex-shrink-0 sticky left-0 z-30">
-        <div className="h-12 border-b border-slate-100 bg-slate-50"></div>
+      {/* 시간 열 (왼쪽 고정) - 높이를 명시적으로 설정하여 sticky 유지 */}
+      <div 
+        className="w-16 border-r border-slate-200 bg-slate-50 flex-shrink-0 sticky left-0 z-30"
+        style={{ height: totalGridHeight }}
+      >
+        <div className="h-12 border-b border-slate-200 bg-slate-50"></div>
         {hours.map((hour) => (
-          <div key={hour} className="h-[120px] text-center text-[10px] text-slate-400 border-b border-slate-100 flex flex-col justify-start pt-1">
-            <span className="font-bold text-slate-500 text-xs">{hour}:00</span>
-            <div className="h-1/2 border-b border-slate-50 w-2 mx-auto mt-4"></div>
-            <span className="opacity-50">{hour}:30</span>
+          <div key={hour} className="h-[120px] text-center text-[10px] text-slate-500 border-b border-slate-100 flex flex-col justify-start pt-1">
+            <span className="font-bold text-slate-600 text-xs">{hour}:00</span>
+            <div className="h-1/2 border-b border-slate-100 w-2 mx-auto mt-4"></div>
+            <span className="opacity-70">{hour}:30</span>
           </div>
         ))}
       </div>
 
-      <div className="flex-1 flex min-w-[1000px]">
+      {/* 요일 및 그리드 영역 - 전체 컨텐츠 높이 확보 */}
+      <div className="flex-1 flex min-w-[1000px]" style={{ height: totalGridHeight }}>
         {DAYS.map((day) => (
           <div 
             key={day} 
-            className="flex-1 min-w-[140px] border-r border-slate-100 last:border-r-0 relative group bg-white/50"
+            className="flex-1 min-w-[140px] border-r border-slate-200 last:border-r-0 relative group bg-white/50"
+            style={{ height: totalGridHeight }}
             onDragOver={(e) => handleDragOver(e, day)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, day)}
           >
-            <div className="h-12 border-b border-slate-100 flex items-center justify-center font-bold text-slate-700 bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm">
+            {/* 요일 헤더 (상단 고정) */}
+            <div className="h-12 border-b border-slate-200 flex items-center justify-center font-bold text-slate-800 bg-slate-100 sticky top-0 z-20 backdrop-blur-sm">
               {day}
             </div>
             
-            <div className="relative" style={{ height: (END_HOUR - START_HOUR + 1) * PIXELS_PER_HOUR }}>
+            {/* 그리드 배경 레이어 */}
+            <div className="relative" style={{ height: totalContentHeight }}>
               {hours.map((hour) => (
-                <div key={hour} className="h-[120px] border-b border-slate-100/80 pointer-events-none relative">
-                  <div className="absolute top-[20px] w-full border-b border-slate-50/50 border-dashed"></div>
-                  <div className="absolute top-[40px] w-full border-b border-slate-50/50 border-dashed"></div>
-                  <div className="absolute top-[60px] w-full border-b border-slate-100/30"></div>
-                  <div className="absolute top-[80px] w-full border-b border-slate-50/50 border-dashed"></div>
-                  <div className="absolute top-[100px] w-full border-b border-slate-50/50 border-dashed"></div>
+                <div key={hour} className="h-[120px] border-b border-slate-100 pointer-events-none relative">
+                  <div className="absolute top-[20px] w-full border-b border-slate-50 border-dashed"></div>
+                  <div className="absolute top-[40px] w-full border-b border-slate-50 border-dashed"></div>
+                  <div className="absolute top-[60px] w-full border-b border-slate-100"></div>
+                  <div className="absolute top-[80px] w-full border-b border-slate-50 border-dashed"></div>
+                  <div className="absolute top-[100px] w-full border-b border-slate-50 border-dashed"></div>
                 </div>
               ))}
+
+              {/* 학교 수업 시간 표시 (빗금 영역) - 요청대로 테두리 제거 */}
+              {schoolTimes
+                .filter(st => st.day === day && st.isEnabled)
+                .map((st, idx) => {
+                  const top = calculatePosition(st.startTime);
+                  const height = calculateHeight(st.startTime, st.endTime);
+                  if (top + height <= 0) return null;
+                  
+                  const safeTop = Math.max(0, top);
+                  const safeHeight = top < 0 ? height + top : height;
+
+                  return (
+                    <div 
+                      key={`school-${idx}`}
+                      className="absolute left-0 right-0 z-0 flex items-center justify-center overflow-hidden"
+                      style={{ 
+                        top: `${safeTop}px`, 
+                        height: `${safeHeight}px`,
+                        background: 'repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px)',
+                        opacity: 0.9,
+                      }}
+                    >
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-white/40 px-1 rounded">
+                        <GraduationCap size={14} />
+                        학교 수업 ({st.startTime}-{st.endTime})
+                      </div>
+                    </div>
+                  );
+                })}
 
               {/* 드랍 가이드 박스 */}
               {dragOverInfo && dragOverInfo.day === day && (
@@ -139,6 +178,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                 </div>
               )}
 
+              {/* 일정 카드 레이어 */}
               {schedules
                 .filter((s) => s.dayOfWeek === day)
                 .map((event) => {
@@ -152,12 +192,12 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                       draggable
                       onDragStart={(e) => onEventMoveStart?.(event.id, e)}
                       onClick={() => onEventClick?.(event)}
-                      className="absolute left-1 right-1 rounded-lg border-2 p-2 text-xs shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md hover:scale-[1.01] transition-all overflow-hidden z-20 group/event"
+                      className="absolute left-1 right-1 rounded-lg border p-2 text-xs shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md hover:scale-[1.01] transition-all overflow-hidden z-20 group/event"
                       style={{
                         top: `${top}px`,
                         height: `${height}px`,
                         backgroundColor: color,
-                        borderColor: `rgba(0,0,0,0.06)`,
+                        borderColor: `rgba(0,0,0,0.1)`,
                       }}
                     >
                       <button 
@@ -170,7 +210,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                         <X size={12} />
                       </button>
                       <div className="font-bold text-slate-900 leading-tight mb-0.5 pr-4 truncate">{event.title}</div>
-                      <div className="text-[9px] text-slate-600 font-medium">
+                      <div className="text-[9px] text-slate-700 font-bold">
                         {event.startTime} - {event.endTime}
                       </div>
                     </div>

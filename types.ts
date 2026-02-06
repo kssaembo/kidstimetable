@@ -7,17 +7,25 @@ export interface Child {
   color: string;
 }
 
+export interface SchoolTime {
+  day: DayOfWeek;
+  startTime: string; // HH:mm
+  endTime: string;   // HH:mm
+  isEnabled: boolean;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
   children: Child[];
   customCategories?: string[];
+  schoolTimes?: SchoolTime[]; // 월~금 수업 시간 설정
 }
 
 export interface EventTemplate {
   id: string;
   userId: string;
-  childId: string; // 자녀별 일정 관리를 위해 추가
+  childId: string;
   title: string;
   duration: number; // 분 단위
   category: string;
@@ -28,7 +36,7 @@ export interface ScheduleEvent {
   id: string;
   userId: string;
   childId: string;
-  templateId: string; // 참조용
+  templateId: string;
   title: string;
   dayOfWeek: DayOfWeek;
   startTime: string; // HH:mm
