@@ -1,0 +1,5 @@
+{
+  "name": "Kids-Time-Table",
+  "description": "A specialized after-school schedule management service for kids with 10-minute precision drag-and-drop scheduling, multi-child support, and export capabilities.",
+  "requestFramePermissions": []
+}
