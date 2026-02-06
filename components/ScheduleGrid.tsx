@@ -135,7 +135,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                 </div>
               ))}
 
-              {/* 학교 수업 시간 표시 (빗금 영역) - 요청대로 테두리 제거 */}
+              {/* 학교 수업 시간 표시 (빗금 영역) - 테두리 제거 */}
               {schoolTimes
                 .filter(st => st.day === day && st.isEnabled)
                 .map((st, idx) => {

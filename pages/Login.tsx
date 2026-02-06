@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Mail, Lock, ArrowRight, UserPlus, AlertCircle } from 'lucide-react';
+import { Sparkles, Mail, Lock, ArrowRight, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { auth } from '../firebase';
 import { 
   signInWithEmailAndPassword, 
@@ -14,6 +14,7 @@ const Login: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const getErrorMessage = (error: any) => {
     const errorCode = error.code || '';
@@ -44,6 +45,7 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setSuccessMsg(null);
     
     if (auth.config.apiKey === "YOUR_API_KEY") {
       setErrorMsg('백엔드 설정(Firebase API Key)이 완료되지 않았습니다.');
@@ -62,18 +64,23 @@ const Login: React.FC = () => {
       console.error("Firebase Auth Error Detail:", error);
       const msg = getErrorMessage(error);
       setErrorMsg(msg);
-      // 알림창이 브라우저에서 차단될 수 있으므로 화면에 직접 띄우는 것과 병행합니다.
     } finally {
       setLoading(false);
     }
   };
 
   const handleResetPassword = async () => {
-    if (!email) return alert('이메일을 입력해주세요.');
+    if (!email) {
+      setErrorMsg('이메일을 먼저 입력해주세요.');
+      return;
+    }
     setErrorMsg(null);
+    setSuccessMsg(null);
     try {
       await sendPasswordResetEmail(auth, email);
-      alert('비밀번호 재설정 이메일이 발송되었습니다.');
+      const msg = '비밀번호 복구 링크가 발송되었습니다.';
+      setSuccessMsg(msg);
+      alert(msg);
     } catch (error: any) {
       setErrorMsg(getErrorMessage(error));
     }
@@ -134,9 +141,16 @@ const Login: React.FC = () => {
             </div>
 
             {errorMsg && (
-              <div className="p-3 bg-rose-50 border-2 border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-sm font-bold animate-pulse">
+              <div className="p-3 bg-rose-50 border-2 border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-sm font-bold">
                 <AlertCircle size={18} />
                 <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl flex items-center gap-2 text-emerald-600 text-sm font-bold">
+                <CheckCircle2 size={18} />
+                <span>{successMsg}</span>
               </div>
             )}
 

@@ -7,7 +7,6 @@ import Assignment from './pages/Assignment';
 import Registration from './pages/Registration';
 import SettingsPage from './pages/SettingsPage';
 import Login from './pages/Login';
-import PublicView from './pages/PublicView';
 import { UserProfile, Child, ScheduleEvent, EventTemplate, SchoolTime } from './types';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -138,7 +137,6 @@ const App: React.FC = () => {
       <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/shared/:shareId" element={<PublicView />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </HashRouter>
@@ -196,7 +194,6 @@ const App: React.FC = () => {
                 onUpdateSchoolTimes={updateSchoolTimes}
               />
             } />
-            <Route path="/shared/:shareId" element={<PublicView />} />
             <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
         </main>

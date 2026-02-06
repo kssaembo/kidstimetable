@@ -2,7 +2,7 @@
 import React from 'react';
 import ScheduleGrid from '../components/ScheduleGrid';
 import { ScheduleEvent, SchoolTime } from '../types';
-import { Download, Share2, FileSpreadsheet, Loader2, Sparkles } from 'lucide-react';
+import { Download, FileSpreadsheet, Loader2, Sparkles } from 'lucide-react';
 
 interface DashboardProps {
   schedules: ScheduleEvent[];
@@ -59,15 +59,6 @@ const Dashboard: React.FC<DashboardProps> = ({ schedules, childName, schoolTimes
     (window as any).XLSX.writeFile(workbook, `시간표_${childName}.xlsx`);
   };
 
-  const handleShare = () => {
-    if (schedules.length === 0) return alert('일정을 먼저 등록하고 배치해 주세요.');
-    const { userId, childId } = schedules[0];
-    const shareId = `${userId}_${childId}`;
-    const url = `${window.location.origin}/#/shared/${shareId}`;
-    navigator.clipboard.writeText(url);
-    alert(`공유 링크가 복사되었습니다! 로그인이 없어도 누구나 볼 수 있습니다.\n${url}`);
-  };
-
   return (
     <div className="p-8 max-w-7xl mx-auto flex flex-col h-screen overflow-hidden">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 no-print flex-shrink-0">
@@ -79,13 +70,6 @@ const Dashboard: React.FC<DashboardProps> = ({ schedules, childName, schoolTimes
           <p className="text-slate-500">전체 시간표를 아래로 스크롤하여 확인하세요 (22:00까지)</p>
         </div>
         <div className="flex gap-3 flex-wrap">
-          <button 
-            onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors shadow-sm font-medium"
-          >
-            <Share2 size={18} />
-            <span>공유하기</span>
-          </button>
           <button 
             onClick={handleExportExcel}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition-colors shadow-sm font-medium"
