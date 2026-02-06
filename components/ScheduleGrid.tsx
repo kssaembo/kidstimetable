@@ -45,19 +45,18 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
     const HEADER_HEIGHT = 48;
     const dragOffset = currentDrag?.offsetY || 0;
     
-    // 1. 마우스의 현재 Y 좌표에서 컨테이너의 상단 위치를 뺍니다.
-    // 2. 사용자가 박스를 잡은 지점(dragOffset)을 빼서 박스의 '상단' 위치를 찾습니다.
-    // 3. 헤더 높이를 빼서 실제 그리드 내부의 Y 좌표를 얻습니다.
+    // 마우스 Y에서 컨테이너 상단을 빼고, 잡은 위치(offsetY)만큼 보정하고, 헤더(48px)를 뺍니다.
     const y = e.clientY - rect.top - dragOffset - HEADER_HEIGHT;
     
     // 1시간당 PIXELS_PER_HOUR(120px) 기준, 10분은 20px
     const totalMinutes = (y / PIXELS_PER_HOUR) * 60;
-    const snappedMinutes = Math.floor(totalMinutes / 10) * 10;
+    // Math.round를 사용하여 가장 가까운 10분 단위로 스냅합니다 (더 직관적)
+    const snappedMinutes = Math.round(totalMinutes / 10) * 10;
     
     const h = Math.floor(snappedMinutes / 60) + START_HOUR;
     const m = snappedMinutes % 60;
     
-    // 시간대 범위를 넘어서지 않도록 보정
+    // 시간대 범위를 넘어서지 않도록 보정 (13시 ~ 22시)
     const safeH = Math.min(Math.max(h, START_HOUR), END_HOUR);
     const timeString = `${safeH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
     const snappedY = ((safeH - START_HOUR) * 60 + m) / 60 * PIXELS_PER_HOUR;
@@ -127,7 +126,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                 </div>
               ))}
 
-              {/* 드랍 가이드 박스 - 헤더 보정 적용됨 */}
+              {/* 드랍 가이드 박스 */}
               {dragOverInfo && dragOverInfo.day === day && (
                 <div 
                   className="absolute left-0 right-0 bg-indigo-500/30 border-2 border-indigo-600/60 z-10 pointer-events-none flex flex-col items-center justify-start py-1 shadow-lg transition-all duration-75 rounded-lg"

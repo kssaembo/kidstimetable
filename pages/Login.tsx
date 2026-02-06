@@ -147,9 +147,11 @@ const Login: React.FC = () => {
           </div>
         </div>
         
-        <p className="text-center mt-8 text-xs text-slate-400">
-          © 2024 Kids-Time-Table. Securely powered by Firebase.
-        </p>
+        <div className="text-center mt-8 text-xs text-slate-400 space-y-1">
+          <p>제안이나 문의사항이 있으시면 언제든 메일 주세요.</p>
+          <p>Contact: sinjoppo@naver.com</p>
+          <p>© 2026. Kwon's class. All rights reserved.</p>
+        </div>
       </div>
     </div>
   );

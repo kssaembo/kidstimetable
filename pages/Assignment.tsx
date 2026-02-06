@@ -46,9 +46,8 @@ const Assignment: React.FC<AssignmentProps> = ({
       const template = templates.find(t => t.id === id);
       if (template) {
         duration = template.duration;
-        // 사이드바에서 드래그 시에는 보통 상단을 잡는다고 가정하거나 중앙을 잡습니다.
-        // 여기서는 상단 스냅을 위해 0으로 설정하거나, 박스 높이의 절반 정도로 줄 수 있습니다.
-        offsetY = 20; 
+        // 사이드바에서 새 일정을 끌어올 때는 상단(0)을 기준으로 잡는 것이 가이드와 일치시키기 쉽습니다.
+        offsetY = 0; 
       }
     } else {
       const schedule = schedules.find(s => s.id === id);
