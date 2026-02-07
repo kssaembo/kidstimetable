@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, CalendarClock, PlusCircle, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, CalendarClock, PlusCircle, Settings } from 'lucide-react';
 
 export const DAYS: ('월' | '화' | '수' | '목' | '금' | '토' | '일')[] = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -19,7 +19,8 @@ export const MENU_ITEMS = [
   { id: 'settings', label: '설정', icon: <Settings size={20} /> },
 ];
 
-export const START_HOUR = 13; // 1 PM
+export const MORNING_START = 9;
+export const AFTERNOON_START = 13;
 export const END_HOUR = 22;   // 10 PM
 export const SLOT_MINUTES = 10;
 export const PIXELS_PER_HOUR = 120; // Scale

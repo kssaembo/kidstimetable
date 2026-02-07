@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import ScheduleGrid from '../components/ScheduleGrid';
 import { ScheduleEvent, SchoolTime } from '../types';
-import { Download, FileSpreadsheet, Loader2, Sparkles } from 'lucide-react';
+import { MORNING_START, AFTERNOON_START } from '../constants';
+import { Download, FileSpreadsheet, Loader2, Sparkles, Info } from 'lucide-react';
 
 interface DashboardProps {
   schedules: ScheduleEvent[];
@@ -11,7 +12,9 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ schedules, childName, schoolTimes }) => {
-  const [exporting, setExporting] = React.useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [viewMode, setViewMode] = useState<'morning' | 'afternoon'>('afternoon');
+  const startHour = viewMode === 'morning' ? MORNING_START : AFTERNOON_START;
 
   const handleExportPDF = async () => {
     const element = document.getElementById('schedule-capture-area');
@@ -31,7 +34,7 @@ const Dashboard: React.FC<DashboardProps> = ({ schedules, childName, schoolTimes
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`시간표_${childName}_${new Date().toLocaleDateString()}.pdf`);
+      pdf.save(`시간표_${childName}_${viewMode === 'morning' ? '오전' : '오후'}_${new Date().toLocaleDateString()}.pdf`);
     } catch (e) {
       console.error(e);
       alert('PDF 생성 중 오류가 발생했습니다.');
@@ -43,7 +46,13 @@ const Dashboard: React.FC<DashboardProps> = ({ schedules, childName, schoolTimes
   const handleExportExcel = () => {
     if (schedules.length === 0) return alert('내보낼 데이터가 없습니다.');
     
-    const data = schedules.map(s => ({
+    // 현재 보기에 보이는 시간대만 필터링 (선택 사항)
+    const filteredSchedules = schedules.filter(s => {
+      const h = parseInt(s.startTime.split(':')[0]);
+      return h >= startHour;
+    });
+
+    const data = filteredSchedules.map(s => ({
       '아이 이름': childName,
       '요일': s.dayOfWeek,
       '일정': s.title,
@@ -56,19 +65,44 @@ const Dashboard: React.FC<DashboardProps> = ({ schedules, childName, schoolTimes
     const worksheet = (window as any).XLSX.utils.json_to_sheet(data);
     const workbook = (window as any).XLSX.utils.book_new();
     (window as any).XLSX.utils.book_append_sheet(workbook, worksheet, "Schedules");
-    (window as any).XLSX.writeFile(workbook, `시간표_${childName}.xlsx`);
+    (window as any).XLSX.writeFile(workbook, `시간표_${childName}_${viewMode === 'morning' ? '오전' : '오후'}.xlsx`);
   };
 
   return (
     <div className="p-8 max-w-7xl mx-auto flex flex-col h-screen overflow-hidden">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 no-print flex-shrink-0">
-        <div>
+        <div className="space-y-4">
           <div className="flex items-center gap-2 mb-1">
              <Sparkles size={20} className="text-indigo-500" />
              <h2 className="text-3xl font-bold text-slate-800">{childName || '아이'}의 주간 시간표</h2>
           </div>
-          <p className="text-slate-500">전체 시간표를 아래로 스크롤하여 확인하세요 (22:00까지)</p>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+              <button
+                onClick={() => setViewMode('morning')}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                  viewMode === 'morning' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                오전부터
+              </button>
+              <button
+                onClick={() => setViewMode('afternoon')}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                  viewMode === 'afternoon' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                오후부터
+              </button>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-2 rounded-lg">
+              <Info size={14} className="text-indigo-500" />
+              <span>{viewMode === 'morning' ? '9시부터 시작하는 오전 시간표입니다.' : '13시부터 시작하는 오후 시간표입니다.'}</span>
+            </div>
+          </div>
         </div>
+
         <div className="flex gap-3 flex-wrap">
           <button 
             onClick={handleExportExcel}
@@ -88,17 +122,8 @@ const Dashboard: React.FC<DashboardProps> = ({ schedules, childName, schoolTimes
         </div>
       </header>
 
-      {/* 가장 큰 영역의 박스 테두리는 삭제 */}
       <div className="flex-1 min-h-0 bg-slate-100 p-2 rounded-2xl shadow-inner overflow-hidden relative">
-        <ScheduleGrid schedules={schedules} schoolTimes={schoolTimes} />
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 no-print flex-shrink-0">
-        <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-           <p className="text-xs text-indigo-600 leading-relaxed font-medium">
-             💡 팁: 학교 수업 시간은 설정 탭에서 관리 가능하며, 해당 시간에는 다른 일정을 배정할 수 없습니다.
-           </p>
-        </div>
+        <ScheduleGrid schedules={schedules} schoolTimes={schoolTimes} startHour={startHour} />
       </div>
     </div>
   );

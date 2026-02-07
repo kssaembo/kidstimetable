@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
 import { DayOfWeek, ScheduleEvent, SchoolTime } from '../types';
-import { DAYS, START_HOUR, END_HOUR, PIXELS_PER_HOUR, CATEGORY_COLORS } from '../constants';
+import { DAYS, END_HOUR, PIXELS_PER_HOUR, CATEGORY_COLORS } from '../constants';
 import { X, Clock, GraduationCap } from 'lucide-react';
 
 interface ScheduleGridProps {
   schedules: ScheduleEvent[];
   schoolTimes?: SchoolTime[];
+  startHour: number; // 시작 시간을 외부에서 주입받음
   onDrop?: (day: DayOfWeek, time: string) => void;
   onEventClick?: (event: ScheduleEvent) => void;
   onEventDelete?: (id: string) => void;
@@ -17,6 +18,7 @@ interface ScheduleGridProps {
 const ScheduleGrid: React.FC<ScheduleGridProps> = ({ 
   schedules, 
   schoolTimes = [],
+  startHour,
   onDrop, 
   onEventClick, 
   onEventDelete,
@@ -24,15 +26,15 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
   isPrinting 
 }) => {
   const [dragOverInfo, setDragOverInfo] = useState<{ day: DayOfWeek, time: string, y: number } | null>(null);
-  const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+  const hours = Array.from({ length: END_HOUR - startHour + 1 }, (_, i) => startHour + i);
   
   const HEADER_HEIGHT = 48;
-  const totalContentHeight = (END_HOUR - START_HOUR + 1) * PIXELS_PER_HOUR;
+  const totalContentHeight = (END_HOUR - startHour + 1) * PIXELS_PER_HOUR;
   const totalGridHeight = totalContentHeight + HEADER_HEIGHT;
 
   const calculatePosition = (time: string) => {
     const [h, m] = time.split(':').map(Number);
-    const diff = (h + m / 60) - START_HOUR;
+    const diff = (h + m / 60) - startHour;
     return diff * PIXELS_PER_HOUR;
   };
 
@@ -55,12 +57,12 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
     const totalMinutes = (y / PIXELS_PER_HOUR) * 60;
     const snappedMinutes = Math.round(totalMinutes / 10) * 10;
     
-    const h = Math.floor(snappedMinutes / 60) + START_HOUR;
+    const h = Math.floor(snappedMinutes / 60) + startHour;
     const m = snappedMinutes % 60;
     
-    const safeH = Math.min(Math.max(h, START_HOUR), END_HOUR);
+    const safeH = Math.min(Math.max(h, startHour), END_HOUR);
     const timeString = `${safeH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-    const snappedY = ((safeH - START_HOUR) * 60 + m) / 60 * PIXELS_PER_HOUR;
+    const snappedY = ((safeH - startHour) * 60 + m) / 60 * PIXELS_PER_HOUR;
     
     return { timeString, snappedY };
   };
@@ -100,11 +102,11 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
         <div className="h-12 border-b border-slate-200 bg-slate-50"></div>
         {hours.map((hour) => (
           <div key={hour} className="h-[120px] text-center bg-slate-50 relative border-b border-slate-200 last:border-b-0">
-            {/* 시(00분) 레이블: 상단 고정 */}
+            {/* 시(00분) 레이블 */}
             <div className="absolute top-1 left-0 right-0 flex justify-center">
               <span className="font-bold text-slate-700 text-[11px] bg-slate-50 px-1">{hour}:00</span>
             </div>
-            {/* 30분 레이블: 정확히 60px(1/2) 지점에 텍스트 중앙이 오도록 배치 */}
+            {/* 30분 레이블 */}
             <div className="absolute top-[60px] left-0 right-0 flex justify-center transform -translate-y-1/2">
               <span className="font-medium text-slate-400 text-[10px] bg-slate-50 px-1">{hour}:30</span>
             </div>
@@ -123,7 +125,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, day)}
           >
-            {/* 요일 헤더 (상단 고정) */}
+            {/* 요일 헤더 */}
             <div className="h-12 border-b border-slate-200 flex items-center justify-center font-bold text-slate-800 bg-slate-100 sticky top-0 z-20 backdrop-blur-sm">
               {day}
             </div>
@@ -132,29 +134,26 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
             <div className="relative" style={{ height: totalContentHeight }}>
               {hours.map((hour) => (
                 <div key={hour} className="h-[120px] border-b border-slate-200 pointer-events-none relative last:border-b-0">
-                  {/* 10분, 20분 보조선 */}
                   <div className="absolute top-[20px] w-full border-b border-slate-100 border-dashed"></div>
                   <div className="absolute top-[40px] w-full border-b border-slate-100 border-dashed"></div>
-                  
-                  {/* 30분 가로선 (요청: 진하게) */}
                   <div className="absolute top-[60px] w-full border-b border-slate-200"></div>
-                  
-                  {/* 40분, 50분 보조선 */}
                   <div className="absolute top-[80px] w-full border-b border-slate-100 border-dashed"></div>
                   <div className="absolute top-[100px] w-full border-b border-slate-100 border-dashed"></div>
                 </div>
               ))}
 
-              {/* 학교 수업 시간 표시 (빗금 영역) */}
+              {/* 학교 수업 시간 표시 */}
               {schoolTimes
                 .filter(st => st.day === day && st.isEnabled)
                 .map((st, idx) => {
                   const top = calculatePosition(st.startTime);
                   const height = calculateHeight(st.startTime, st.endTime);
-                  if (top + height <= 0) return null;
+                  
+                  // 현재 그리드 범위(startHour) 밖의 수업은 제외 또는 조정
+                  if (top + height <= 0 || top >= totalContentHeight) return null;
                   
                   const safeTop = Math.max(0, top);
-                  const safeHeight = top < 0 ? height + top : height;
+                  const safeHeight = Math.min(height - (safeTop - top), totalContentHeight - safeTop);
 
                   return (
                     <div 
@@ -195,6 +194,9 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                   const top = calculatePosition(event.startTime);
                   const height = calculateHeight(event.startTime, event.endTime);
                   const color = CATEGORY_COLORS[event.category] || '#E0F2FE';
+
+                  // 시작 시간 필터링
+                  if (top + height <= 0 || top >= totalContentHeight) return null;
 
                   return (
                     <div
