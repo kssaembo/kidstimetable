@@ -12,7 +12,7 @@ interface SettingsPageProps {
   onUpdateSchoolTimes: (times: SchoolTime[]) => void;
 }
 
-const HOURS = [12, 13, 14, 15, 16, 17];
+const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 const MINUTES = ['00', '10', '20', '30', '40', '50'];
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ 
@@ -25,25 +25,28 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
   const [newChildName, setNewChildName] = useState('');
   
-  // 초기 상태를 props에서 가져오되, 없을 경우 월~금 기본 데이터 생성
-  const [schoolTimes, setSchoolTimes] = useState<SchoolTime[]>(() => {
-    if (user.schoolTimes && user.schoolTimes.length > 0) {
-      return user.schoolTimes;
-    }
-    return ['월', '화', '수', '목', '금'].map(day => ({
-      day: day as any,
-      startTime: '12:00',
-      endTime: '13:00',
-      isEnabled: true
-    }));
-  });
+  // 현재 선택된 자녀 정보
+  const selectedChild = user.children.find(c => c.id === selectedChildId);
+  
+  // 로컬 상태로 관리하는 수업 시간
+  const [schoolTimes, setSchoolTimes] = useState<SchoolTime[]>([]);
 
-  // 외부(Firebase) 데이터 업데이트 시 로컬 상태 동기화
+  // 선택된 자녀가 바뀌거나 외부 데이터가 업데이트되면 로컬 상태 동기화
   useEffect(() => {
-    if (user.schoolTimes && user.schoolTimes.length > 0) {
-      setSchoolTimes(user.schoolTimes);
+    if (selectedChild) {
+      if (selectedChild.schoolTimes && selectedChild.schoolTimes.length > 0) {
+        setSchoolTimes(selectedChild.schoolTimes);
+      } else {
+        // 데이터가 없는 경우 기본값 세팅
+        setSchoolTimes(['월', '화', '수', '목', '금'].map(day => ({
+          day: day as any,
+          startTime: '09:00',
+          endTime: '13:00',
+          isEnabled: true
+        })));
+      }
     }
-  }, [user.schoolTimes]);
+  }, [selectedChildId, user.children]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +64,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       } else {
         const newEntry: SchoolTime = {
           day: day as any,
-          startTime: '12:00',
+          startTime: '09:00',
           endTime: '13:00',
           isEnabled: true,
           [field]: value
@@ -72,6 +75,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const saveSchoolTimes = () => {
+    if (!selectedChildId) return;
+
     // 유효성 체크 (시작 < 종료)
     for (const st of schoolTimes) {
       if (st.isEnabled) {
@@ -84,15 +89,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       }
     }
     
-    // 부모 컴포넌트의 업데이트 함수 호출 (Firebase 반영)
     onUpdateSchoolTimes(schoolTimes);
-    // 요청사항: '정규 수업 시간이 등록되었습니다.' 안내메시지
-    alert('정규 수업 시간이 등록되었습니다.');
+    alert(`${selectedChild?.name}의 정규 수업 시간이 등록되었습니다.`);
   };
 
   const TimeSelector = ({ value, onChange }: { value: string, onChange: (v: string) => void }) => {
-    const parts = (value || "12:00").split(':');
-    const h = parts[0] || "12";
+    const parts = (value || "09:00").split(':');
+    const h = parts[0] || "09";
     const m = parts[1] || "00";
     
     return (
@@ -119,7 +122,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     <div className="p-8 max-w-5xl mx-auto space-y-12">
       <header>
         <h2 className="text-3xl font-bold text-slate-800 mb-2">설정 및 자녀 관리</h2>
-        <p className="text-slate-500">자녀 프로필을 관리하고 공통 수업 시간을 설정하세요.</p>
+        <p className="text-slate-500">자녀 프로필을 관리하고 자녀별 수업 시간을 설정하세요.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -198,24 +201,24 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           <div className="flex justify-between items-center border-b-2 border-slate-100 pb-4">
             <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
               <GraduationCap className="text-indigo-700" size={24} />
-              정규 수업 시간 등록
+              <span className="text-indigo-800">[{selectedChild?.name || '자녀'}]</span>의 수업 시간
             </h3>
             <button 
               onClick={saveSchoolTimes}
               className="px-5 py-2 bg-indigo-700 text-white rounded-xl text-sm font-extrabold shadow-lg hover:bg-indigo-800 transition-all active:scale-95"
             >
-              설정 저장
+              저장
             </button>
           </div>
           
           <p className="text-xs text-slate-600 leading-relaxed font-extrabold bg-slate-50 p-3 rounded-lg border-l-4 border-indigo-600">
-            월~금요일 사이의 정규 수업 시간을 설정하세요. <br/>
-            이 시간에는 다른 일정을 배정할 수 없습니다. (12시~17시 설정 가능)
+            {selectedChild?.name}의 정규 수업 시간을 설정하세요. <br/>
+            이 시간에는 다른 일정을 배정할 수 없습니다. (8시~17시 설정 가능)
           </p>
 
           <div className="space-y-4 mt-4">
             {['월', '화', '수', '목', '금'].map(day => {
-              const st = schoolTimes.find(s => s.day === day) || { day, startTime: '12:00', endTime: '13:00', isEnabled: true };
+              const st = schoolTimes.find(s => s.day === day) || { day, startTime: '09:00', endTime: '13:00', isEnabled: true };
               return (
                 <div key={day} className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${st.isEnabled ? 'border-indigo-300 bg-indigo-50/70 shadow-inner' : 'border-slate-200 opacity-60 bg-slate-100'}`}>
                   <div className="flex items-center gap-3">
@@ -249,8 +252,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       <div className="mt-12 p-6 bg-slate-200 rounded-2xl text-slate-800 text-sm border-2 border-slate-400 shadow-sm">
         <h4 className="font-extrabold mb-2 flex items-center gap-1">ℹ️ 설정 가이드</h4>
         <ul className="list-disc list-inside space-y-1 leading-relaxed font-bold">
-          <li>수업 시간은 전체 자녀 계정에 공통으로 적용되는 차단 영역입니다.</li>
-          <li>10분 단위로 설정이 가능하며, 겹치는 일정 배정을 시스템이 자동으로 방지합니다.</li>
+          <li>수업 시간은 선택된 자녀에게만 적용되는 차단 영역입니다.</li>
+          <li>자녀별로 학교 시간표가 다르다면 각각 설정하여 관리할 수 있습니다.</li>
           <li>설정한 시간은 시간표(대시보드)와 배정 화면에서 빗금 패턴으로 명확히 표시됩니다.</li>
         </ul>
       </div>

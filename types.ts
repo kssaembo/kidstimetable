@@ -5,6 +5,7 @@ export interface Child {
   id: string;
   name: string;
   color: string;
+  schoolTimes?: SchoolTime[]; // 자녀별 개별 수업 시간
 }
 
 export interface SchoolTime {
@@ -19,7 +20,7 @@ export interface UserProfile {
   email: string;
   children: Child[];
   customCategories?: string[];
-  schoolTimes?: SchoolTime[]; // 월~금 수업 시간 설정
+  schoolTimes?: SchoolTime[]; // (하위 호환성을 위해 유지하거나 제거 가능, 여기서는 Child 내부로 이동)
 }
 
 export interface EventTemplate {
