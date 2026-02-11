@@ -7,6 +7,7 @@ import Assignment from './pages/Assignment';
 import Registration from './pages/Registration';
 import SettingsPage from './pages/SettingsPage';
 import Login from './pages/Login';
+import Legal from './pages/Legal';
 import { UserProfile, Child, ScheduleEvent, EventTemplate, SchoolTime } from './types';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -137,72 +138,73 @@ const App: React.FC = () => {
 
   if (loading) return <div className="h-screen flex items-center justify-center text-indigo-500 font-bold">로딩 중...</div>;
 
-  if (!user) {
-    return (
-      <HashRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="*" element={<Navigate to="/login" />} />
-        </Routes>
-      </HashRouter>
-    );
-  }
-
-  const selectedChild = user.children.find(c => c.id === selectedChildId) || user.children[0];
+  // Fix: Define selectedChild to resolve reference errors in Dashboard and Assignment routes
+  const selectedChild = user?.children.find(c => c.id === selectedChildId);
 
   return (
     <HashRouter>
-      <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-800">
-        <Sidebar user={user} onLogout={logout} />
-        <main className="flex-1 overflow-auto relative">
-          <Routes>
-            <Route path="/dashboard" element={
-              <Dashboard 
-                schedules={schedules.filter(s => s.childId === selectedChildId)} 
-                childName={selectedChild?.name || ''}
-                schoolTimes={selectedChild?.schoolTimes || []}
-              />
-            } />
-            <Route path="/assignment" element={
-              <Assignment 
-                schedules={schedules.filter(s => s.childId === selectedChildId)} 
-                templates={templates}
-                children={user.children}
-                activeChildId={selectedChildId || ''}
-                setActiveChildId={setSelectedChildId}
-                addSchedule={addSchedule}
-                updateSchedule={updateSchedule}
-                deleteSchedule={deleteSchedule}
-                schoolTimes={selectedChild?.schoolTimes || []}
-              />
-            } />
-            <Route path="/registration" element={
-              <Registration 
-                userId={user.uid} 
-                categories={user.customCategories || []}
-                onAddCategory={addCategory}
-                onRemoveCategory={removeCategory}
-                onSubmit={addTemplate}
-                onUpdateTemplate={updateTemplate}
-                onDeleteTemplate={deleteTemplate}
-                templates={templates}
-                children={user.children}
-              />
-            } />
-            <Route path="/settings" element={
-              <SettingsPage 
-                user={user} 
-                onAddChild={(name) => wrapAction(() => updateDoc(doc(db, 'users', user.uid), { children: arrayUnion({id: `c${Date.now()}`, name, color: '#818cf8', schoolTimes: ['월', '화', '수', '목', '금'].map(day => ({day: day as any, startTime: '09:00', endTime: '13:00', isEnabled: true}))}) }))} 
-                onRemoveChild={(id) => wrapAction(() => updateDoc(doc(db, 'users', user.uid), { children: user.children.filter(c => c.id !== id) }))}
-                selectedChildId={selectedChildId}
-                onSelectChild={setSelectedChildId}
-                onUpdateSchoolTimes={(times) => selectedChildId && updateChildSchoolTimes(selectedChildId, times)}
-              />
-            } />
-            <Route path="*" element={<Navigate to="/dashboard" />} />
-          </Routes>
-        </main>
-      </div>
+      {user ? (
+        <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-800">
+          <Sidebar user={user} onLogout={logout} />
+          <main className="flex-1 overflow-auto relative">
+            <Routes>
+              <Route path="/dashboard" element={
+                <Dashboard 
+                  schedules={schedules.filter(s => s.childId === selectedChildId)} 
+                  children={user.children}
+                  activeChildId={selectedChildId || ''}
+                  setActiveChildId={setSelectedChildId}
+                  schoolTimes={selectedChild?.schoolTimes || []}
+                />
+              } />
+              <Route path="/assignment" element={
+                <Assignment 
+                  schedules={schedules.filter(s => s.childId === selectedChildId)} 
+                  templates={templates}
+                  children={user.children}
+                  activeChildId={selectedChildId || ''}
+                  setActiveChildId={setSelectedChildId}
+                  addSchedule={addSchedule}
+                  updateSchedule={updateSchedule}
+                  deleteSchedule={deleteSchedule}
+                  schoolTimes={selectedChild?.schoolTimes || []}
+                />
+              } />
+              <Route path="/registration" element={
+                <Registration 
+                  userId={user.uid} 
+                  categories={user.customCategories || []}
+                  onAddCategory={addCategory}
+                  onRemoveCategory={removeCategory}
+                  onSubmit={addTemplate}
+                  onUpdateTemplate={updateTemplate}
+                  onDeleteTemplate={deleteTemplate}
+                  templates={templates}
+                  children={user.children}
+                />
+              } />
+              <Route path="/settings" element={
+                <SettingsPage 
+                  user={user} 
+                  onAddChild={(name) => wrapAction(() => updateDoc(doc(db, 'users', user.uid), { children: arrayUnion({id: `c${Date.now()}`, name, color: '#818cf8', schoolTimes: ['월', '화', '수', '목', '금'].map(day => ({day: day as any, startTime: '09:00', endTime: '13:00', isEnabled: true}))}) }))} 
+                  onRemoveChild={(id) => wrapAction(() => updateDoc(doc(db, 'users', user.uid), { children: user.children.filter(c => c.id !== id) }))}
+                  selectedChildId={selectedChildId}
+                  onSelectChild={setSelectedChildId}
+                  onUpdateSchoolTimes={(times) => selectedChildId && updateChildSchoolTimes(selectedChildId, times)}
+                />
+              } />
+              <Route path="/legal" element={<Legal />} />
+              <Route path="*" element={<Navigate to="/dashboard" />} />
+            </Routes>
+          </main>
+        </div>
+      ) : (
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/legal" element={<Legal />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      )}
     </HashRouter>
   );
 };
