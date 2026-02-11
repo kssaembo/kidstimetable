@@ -25,51 +25,67 @@ const Dashboard: React.FC<DashboardProps> = ({
   const startHour = viewMode === 'morning' ? MORNING_START : AFTERNOON_START;
   const childName = children.find(c => c.id === activeChildId)?.name || '아이';
 
-  const handleExportPDF = async () => {
-    // ScheduleGrid 내부에 전체 높이를 가진 ID가 'schedule-capture-area'인 엘리먼트를 타겟팅합니다.
+  const handleExportImage = async () => {
     const element = document.getElementById('schedule-capture-area');
     if (!element) return;
     
     setExporting(true);
     try {
-      const { jsPDF } = (window as any).jspdf;
-      
-      // html2canvas 옵션 설정: 전체 스크롤 영역을 온전히 캡처하기 위해 
-      // width/height를 엘리먼트의 실제 scroll 크기로 고정합니다.
+      // html2canvas 옵션 설정: 전체 스크롤 영역을 포함하도록 강제 지정
       const canvas = await (window as any).html2canvas(element, { 
-        scale: 2,
+        scale: 3, // 고화질 저장을 위해 스케일 업
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        // 보이는 뷰포트가 아닌 실제 요소의 전체 크기를 캡처
         width: element.scrollWidth,
         height: element.scrollHeight,
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
-        scrollX: 0,
-        scrollY: 0,
         x: 0,
         y: 0,
+        scrollX: 0,
+        scrollY: 0,
         onclone: (clonedDoc: Document) => {
-          // 복제된 문서의 엘리먼트가 캡처 시 가려지지 않도록 보장
-          const clonedElement = clonedDoc.getElementById('schedule-capture-area');
-          if (clonedElement) {
-            clonedElement.style.height = `${element.scrollHeight}px`;
-            clonedElement.style.overflow = 'visible';
+          const clonedEl = clonedDoc.getElementById('schedule-capture-area');
+          if (clonedEl) {
+            // [핵심 로직] 캡처를 방해하는 모든 상위 부모의 높이 제한과 스크롤 제한을 해제
+            let current: HTMLElement | null = clonedEl;
+            while (current) {
+              current.style.height = 'auto';
+              current.style.maxHeight = 'none';
+              current.style.overflow = 'visible';
+              current.style.display = 'block'; // 부모들은 block으로 풀어서 자식이 늘어나게 함
+              current = current.parentElement;
+            }
+
+            // 캡처 대상 본체는 그리드 레이아웃을 유지해야 하므로 flex 재설정
+            clonedEl.style.display = 'flex';
+            clonedEl.style.width = `${element.scrollWidth}px`;
+            clonedEl.style.height = `${element.scrollHeight}px`;
+
+            // html2canvas는 sticky를 완벽히 지원하지 않으므로 위치를 고정(relative)으로 변환
+            const stickyElements = clonedEl.querySelectorAll('.sticky');
+            stickyElements.forEach((el: any) => {
+              el.style.position = 'relative';
+              el.style.top = '0';
+              el.style.left = '0';
+            });
           }
         }
       });
 
+      // 이미지 데이터 생성 및 다운로드
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('l', 'mm', 'a4');
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`시간표_${childName}_${viewMode === 'morning' ? '오전' : '오후'}_${new Date().toLocaleDateString()}.pdf`);
+      const link = document.createElement('a');
+      link.href = imgData;
+      link.download = `시간표_${childName}_${viewMode === 'morning' ? '오전' : '오후'}_${new Date().toLocaleDateString()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (e) {
       console.error(e);
-      alert('PDF 생성 중 오류가 발생했습니다.');
+      alert('이미지 생성 중 오류가 발생했습니다.');
     } finally {
       setExporting(false);
     }
@@ -118,7 +134,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   viewMode === 'morning' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                오전부터
+                오전부터 (9시~)
               </button>
               <button
                 onClick={() => setViewMode('afternoon')}
@@ -126,15 +142,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                   viewMode === 'afternoon' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                오후부터
+                오후부터 (13시~)
               </button>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-2 rounded-lg">
               <Info size={14} className="text-indigo-500" />
-              <span>{viewMode === 'morning' ? '9시부터 시작하는 오전 시간표입니다.' : '13시부터 시작하는 오후 시간표입니다.'}</span>
+              <span>{viewMode === 'morning' ? '09:00 ~ 23:00 일정입니다.' : '13:00 ~ 23:00 일정입니다.'}</span>
             </div>
 
-            {/* 자녀 선택 탭 */}
             <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-fit">
               {children.map(child => (
                 <button
@@ -159,15 +174,15 @@ const Dashboard: React.FC<DashboardProps> = ({
             className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition-colors shadow-sm font-medium"
           >
             <FileSpreadsheet size={18} />
-            <span>XLSX 내보내기</span>
+            <span>Excel 내보내기</span>
           </button>
           <button 
-            onClick={handleExportPDF}
+            onClick={handleExportImage}
             disabled={exporting}
             className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-md disabled:bg-indigo-300 font-bold"
           >
             {exporting ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
-            <span>PDF 저장</span>
+            <span>이미지 저장</span>
           </button>
         </div>
       </header>

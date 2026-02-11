@@ -21,7 +21,7 @@ export const MENU_ITEMS = [
 
 export const MORNING_START = 9;
 export const AFTERNOON_START = 13;
-export const END_HOUR = 22;   // 10 PM
+export const END_HOUR = 23;   // 밤 11시까지 확장
 export const SLOT_MINUTES = 10;
 export const PIXELS_PER_HOUR = 120; // Scale
 export const PIXELS_PER_MINUTE = PIXELS_PER_HOUR / 60;
